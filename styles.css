@@ -1,0 +1,422 @@
+/* ════════════════════════════════════════════
+   styles.css — Blindfold Chess Trainer
+   ════════════════════════════════════════════ */
+
+/* ── Variables ── */
+:root {
+  --bg:          #0d0d0d;
+  --panel:       #141414;
+  --border:      #2a2a2a;
+  --light-sq:    #c9a96e;
+  --dark-sq:     #6b3f1f;
+  --highlight:   #4ade8088;
+  --accent:      #c9a96e;
+  --accent-dim:  #7a5c2e;
+  --text:        #e8dcc8;
+  --text-dim:    #7a6a55;
+  --yes:         #2d6a4f;
+  --yes-hover:   #40916c;
+  --no:          #7b2d2d;
+  --no-hover:    #c1121f;
+  --correct:     #52b788;
+  --incorrect:   #e63946;
+  --attacked:    rgba(255,80,80,0.55);
+  --safe:        rgba(80,200,120,0.45);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Crimson Pro', Georgia, serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ── Header ── */
+header {
+  width: 100%;
+  text-align: center;
+  padding: 2.5rem 1rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+header h1 {
+  font-family: 'Cinzel', serif;
+  font-weight: 900;
+  font-size: clamp(1.6rem, 4vw, 2.6rem);
+  letter-spacing: .12em;
+  color: var(--accent);
+  text-shadow: 0 0 40px rgba(201,169,110,.3);
+}
+header p {
+  font-size: .95rem;
+  color: var(--text-dim);
+  font-style: italic;
+  margin-top: .4rem;
+}
+
+/* ── Tab nav ── */
+nav {
+  display: flex;
+  gap: 0;
+  margin: 2rem auto 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+nav button {
+  font-family: 'Cinzel', serif;
+  font-size: .85rem;
+  letter-spacing: .1em;
+  padding: .65rem 2rem;
+  border: none;
+  background: var(--panel);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background .2s, color .2s;
+}
+nav button.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+nav button:hover:not(.active) { background: #1e1e1e; color: var(--text); }
+
+/* ── Main content ── */
+main {
+  width: 100%;
+  max-width: 900px;
+  padding: 2rem 1rem 3rem;
+}
+
+.drill { display: none; flex-direction: column; align-items: center; gap: 1.8rem; }
+.drill.visible { display: flex; }
+
+/* ── Board wrapper ── */
+.board-area {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ── Chessboard ── */
+.board-frame {
+  border: 3px solid var(--accent-dim);
+  box-shadow: 0 0 30px rgba(201,169,110,.15), inset 0 0 0 1px #000;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.board {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  width: min(72vw, 480px);
+  height: min(72vw, 480px);
+}
+.sq {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(1.6rem, 5vw, 2.2rem);
+  cursor: default;
+  transition: background .15s;
+  user-select: none;
+}
+.sq.light { background: var(--light-sq); }
+.sq.dark  { background: var(--dark-sq);  }
+
+.sq.visited::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--highlight);
+  pointer-events: none;
+}
+.sq.clickable { cursor: pointer; }
+.sq.clickable:hover { filter: brightness(1.25); }
+
+/* Attack-drill overlays */
+.sq.attacked-sq::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--attacked);
+  pointer-events: none;
+}
+.sq.safe-sq::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--safe);
+  pointer-events: none;
+}
+
+/* Coordinate labels */
+.sq .coord {
+  position: absolute;
+  font-size: clamp(.45rem, 1.1vw, .65rem);
+  font-family: 'Cinzel', serif;
+  font-weight: 600;
+  opacity: .55;
+  pointer-events: none;
+}
+.sq .coord.file { bottom: 2px; right: 3px; }
+.sq .coord.rank { top: 2px;   left: 3px; }
+
+/* ── Side panel (Drill 1) ── */
+.side-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 180px;
+  max-width: 220px;
+}
+
+.stat-box {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem 1.2rem;
+}
+.stat-box h3 {
+  font-family: 'Cinzel', serif;
+  font-size: .7rem;
+  letter-spacing: .15em;
+  color: var(--text-dim);
+  margin-bottom: .5rem;
+}
+.stat-box .value {
+  font-family: 'Cinzel', serif;
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--accent);
+}
+.stat-box .label {
+  font-size: .8rem;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+/* ── Buttons ── */
+.btn {
+  font-family: 'Cinzel', serif;
+  font-size: .8rem;
+  letter-spacing: .12em;
+  padding: .7rem 1.4rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background .2s, color .2s, border-color .2s, transform .1s;
+  background: var(--panel);
+  color: var(--text);
+}
+.btn:hover { background: #222; border-color: var(--accent-dim); color: var(--accent); }
+.btn:active { transform: scale(.97); }
+
+.btn-reset {
+  background: #1a0e00;
+  border-color: var(--accent-dim);
+  color: var(--accent);
+  width: 100%;
+}
+.btn-reset:hover { background: #2a1800; }
+
+.btn-yes {
+  background: var(--yes);
+  border-color: #1b4332;
+  color: #b7e4c7;
+  flex: 1;
+  font-size: .9rem;
+  padding: .9rem;
+}
+.btn-yes:hover { background: var(--yes-hover); color: #fff; border-color: var(--yes-hover); }
+
+.btn-no {
+  background: var(--no);
+  border-color: #4a0e0e;
+  color: #f4a5ae;
+  flex: 1;
+  font-size: .9rem;
+  padding: .9rem;
+}
+.btn-no:hover { background: var(--no-hover); color: #fff; border-color: var(--no-hover); }
+
+.btn-new {
+  background: #0f0f0f;
+  border: 1px solid var(--accent-dim);
+  color: var(--accent);
+  padding: .7rem 1.6rem;
+}
+
+/* ── Attack drill layout ── */
+.attack-layout {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+}
+.attack-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 200px;
+  max-width: 240px;
+}
+
+/* ── Board visibility toggle (Drill 2) ── */
+.board-cover-wrap {
+  position: relative;
+}
+.board-cover {
+  position: absolute;
+  inset: 0;
+  background: #0d0d0d;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .8rem;
+  z-index: 10;
+  border-radius: 4px;
+  transition: opacity .3s;
+}
+.board-cover .cover-icon {
+  font-size: 2.8rem;
+  opacity: .35;
+}
+.board-cover .cover-text {
+  font-family: 'Cinzel', serif;
+  font-size: .7rem;
+  letter-spacing: .18em;
+  color: var(--text-dim);
+}
+.board-cover.hidden { display: none; }
+
+.btn-toggle-board {
+  font-family: 'Cinzel', serif;
+  font-size: .75rem;
+  letter-spacing: .12em;
+  padding: .55rem 1.1rem;
+  border: 1px solid var(--accent-dim);
+  border-radius: 4px;
+  cursor: pointer;
+  background: #1a0e00;
+  color: var(--accent);
+  transition: background .2s, color .2s;
+  align-self: flex-start;
+}
+.btn-toggle-board:hover { background: #2a1800; }
+
+/* ── Question card ── */
+.question-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.2rem 1.4rem;
+  line-height: 1.7;
+}
+.question-card h3 {
+  font-family: 'Cinzel', serif;
+  font-size: .65rem;
+  letter-spacing: .18em;
+  color: var(--text-dim);
+  margin-bottom: .7rem;
+}
+.question-card .q-text {
+  font-size: 1.05rem;
+  color: var(--text);
+}
+.question-card .q-text strong {
+  color: var(--accent);
+  font-style: normal;
+}
+
+.answer-row { display: flex; gap: .8rem; }
+
+.feedback-box {
+  border-radius: 6px;
+  padding: .9rem 1.2rem;
+  font-size: .95rem;
+  font-weight: 300;
+  line-height: 1.5;
+  min-height: 3.5rem;
+  transition: all .3s;
+  border: 1px solid transparent;
+}
+.feedback-box.correct   { background: rgba(82,183,136,.12); border-color: var(--correct);   color: var(--correct);   }
+.feedback-box.incorrect { background: rgba(230,57,70,.12);  border-color: var(--incorrect); color: var(--incorrect); }
+.feedback-box.empty     { background: var(--panel); border-color: var(--border); color: var(--text-dim); font-style: italic; }
+
+.score-row { display: flex; gap: .8rem; }
+.score-chip {
+  flex: 1;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .6rem .8rem;
+  text-align: center;
+}
+.score-chip .num {
+  font-family: 'Cinzel', serif;
+  font-size: 1.5rem;
+  font-weight: 900;
+}
+.score-chip .lbl {
+  font-size: .72rem;
+  color: var(--text-dim);
+  font-style: italic;
+}
+.score-chip.correct-chip   .num { color: var(--correct);   }
+.score-chip.incorrect-chip .num { color: var(--incorrect); }
+
+/* ── Success banner (Drill 1) ── */
+.banner {
+  background: linear-gradient(135deg, #1a3a1a, #0f2a0f);
+  border: 1px solid var(--correct);
+  border-radius: 8px;
+  padding: 1.2rem 1.6rem;
+  text-align: center;
+  color: var(--correct);
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  letter-spacing: .08em;
+  display: none;
+}
+.banner.show { display: block; }
+
+/* ── Move log (Drill 1) ── */
+.move-log {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .8rem 1rem;
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: .82rem;
+  color: var(--text-dim);
+  font-style: italic;
+  line-height: 1.8;
+}
+.move-log h3 {
+  font-family: 'Cinzel', serif;
+  font-size: .65rem;
+  letter-spacing: .15em;
+  color: var(--text-dim);
+  margin-bottom: .5rem;
+  font-style: normal;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #0d0d0d; }
+::-webkit-scrollbar-thumb { background: var(--accent-dim); border-radius: 3px; }
+
+@media (max-width: 540px) {
+  .board { width: 90vw; height: 90vw; }
+  nav button { padding: .55rem 1.1rem; font-size: .75rem; }
+}
