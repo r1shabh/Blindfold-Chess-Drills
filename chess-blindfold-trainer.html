@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Blindfold Chess Trainer</title>
+
+    <!--
+    ╔══════════════════════════════════════════════════════╗
+    ║  DEPLOYMENT CONFIG                                   ║
+    ║  Change BASE_URL to your domain if you go live.     ║
+    ╚══════════════════════════════════════════════════════╝
+  -->
+    <script>
+        const CONFIG = {
+            BASE_URL: "http://localhost",   // ← change to "https://yourdomain.com" when hosting
+            PORT: 5500,                     // ← change to 80/443 in production (or null for no port)
+        };
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap"
+        rel="stylesheet" />
+
+    <style>
+        /* ── Variables ── */
+        :root {
+            --bg: #0d0d0d;
+            --panel: #141414;
+            --border: #2a2a2a;
+            --light-sq: #c9a96e;
+            --dark-sq: #6b3f1f;
+            --highlight: #4ade8088;
+            --knight-clr: #e8d5b7;
+            --accent: #c9a96e;
+            --accent-dim: #7a5c2e;
+            --text: #e8dcc8;
+            --text-dim: #7a6a55;
+            --yes: #2d6a4f;
+            --yes-hover: #40916c;
+            --no: #7b2d2d;
+            --no-hover: #c1121f;
+            --correct: #52b788;
+            --incorrect: #e63946;
+            --attacked: rgba(255, 80, 80, 0.55);
+            --safe: rgba(80, 200, 120, 0.45);
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Crimson Pro', Georgia, serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* ── Header ── */
+        header {
+            width: 100%;
+            text-align: center;
+            padding: 2.5rem 1rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        header h1 {
+            font-family: 'Cinzel', serif;
+            font-weight: 900;
+            font-size: clamp(1.6rem, 4vw, 2.6rem);
+            letter-spacing: .12em;
+            color: var(--accent);
+            text-shadow: 0 0 40px rgba(201, 169, 110, .3);
+        }
+
+        header p {
+            font-size: .95rem;
+            color: var(--text-dim);
+            font-style: italic;
+            margin-top: .4rem;
+        }
+
+        /* ── Tab nav ── */
+        nav {
+            display: flex;
+            gap: 0;
+            margin: 2rem auto 0;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        nav button {
+            font-family: 'Cinzel', serif;
+            font-size: .85rem;
+            letter-spacing: .1em;
+            padding: .65rem 2rem;
+            border: none;
+            background: var(--panel);
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: background .2s, color .2s;
+        }
+
+        nav button.active {
+            background: var(--accent-dim);
+            color: var(--accent);
+        }
+
+        nav button:hover:not(.active) {
+            background: #1e1e1e;
+            color: var(--text);
+        }
+
+        /* ── Main content ── */
+        main {
+            width: 100%;
+            max-width: 900px;
+            padding: 2rem 1rem 3rem;
+        }
+
+        .drill {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.8rem;
+        }
+
+        .drill.visible {
+            display: flex;
+        }
+
+        /* ── Board wrapper ── */
+        .board-area {
+            display: flex;
+            gap: 2rem;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        /* ── Chessboard ── */
+        .board-frame {
+            border: 3px solid var(--accent-dim);
+            box-shadow: 0 0 30px rgba(201, 169, 110, .15), inset 0 0 0 1px #000;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            width: min(72vw, 480px);
+            height: min(72vw, 480px);
+        }
+
+        .sq {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(1.6rem, 5vw, 2.2rem);
+            cursor: default;
+            transition: background .15s;
+            user-select: none;
+        }
+
+        .sq.light {
+            background: var(--light-sq);
+        }
+
+        .sq.dark {
+            background: var(--dark-sq);
+        }
+
+        .sq.visited::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--highlight);
+            pointer-events: none;
+        }
+
+        .sq.clickable {
+            cursor: pointer;
+        }
+
+        .sq.clickable:hover {
+            filter: brightness(1.25);
+        }
+
+        /* attack-drill overlays */
+        .sq.attacked-sq::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--attacked);
+            pointer-events: none;
+        }
+
+        .sq.safe-sq::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--safe);
+            pointer-events: none;
+        }
+
+        /* coord labels */
+        .sq .coord {
+            position: absolute;
+            font-size: clamp(.45rem, 1.1vw, .65rem);
+            font-family: 'Cinzel', serif;
+            font-weight: 600;
+            opacity: .55;
+            pointer-events: none;
+        }
+
+        .sq .coord.file {
+            bottom: 2px;
+            right: 3px;
+        }
+
+        .sq .coord.rank {
+            top: 2px;
+            left: 3px;
+        }
+
+        /* ── Side panel ── */
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            min-width: 180px;
+            max-width: 220px;
+        }
+
+        .stat-box {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem 1.2rem;
+        }
+
+        .stat-box h3 {
+            font-family: 'Cinzel', serif;
+            font-size: .7rem;
+            letter-spacing: .15em;
+            color: var(--text-dim);
+            margin-bottom: .5rem;
+        }
+
+        .stat-box .value {
+            font-family: 'Cinzel', serif;
+            font-size: 2rem;
+            font-weight: 900;
+            color: var(--accent);
+        }
+
+        .stat-box .label {
+            font-size: .8rem;
+            color: var(--text-dim);
+            font-style: italic;
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            font-family: 'Cinzel', serif;
+            font-size: .8rem;
+            letter-spacing: .12em;
+            padding: .7rem 1.4rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background .2s, color .2s, border-color .2s, transform .1s;
+            background: var(--panel);
+            color: var(--text);
+        }
+
+        .btn:hover {
+            background: #222;
+            border-color: var(--accent-dim);
+            color: var(--accent);
+        }
+
+        .btn:active {
+            transform: scale(.97);
+        }
+
+        .btn-reset {
+            background: #1a0e00;
+            border-color: var(--accent-dim);
+            color: var(--accent);
+            width: 100%;
+        }
+
+        .btn-reset:hover {
+            background: #2a1800;
+        }
+
+        .btn-yes {
+            background: var(--yes);
+            border-color: #1b4332;
+            color: #b7e4c7;
+            flex: 1;
+            font-size: .9rem;
+            padding: .9rem;
+        }
+
+        .btn-yes:hover {
+            background: var(--yes-hover);
+            color: #fff;
+            border-color: var(--yes-hover);
+        }
+
+        .btn-no {
+            background: var(--no);
+            border-color: #4a0e0e;
+            color: #f4a5ae;
+            flex: 1;
+            font-size: .9rem;
+            padding: .9rem;
+        }
+
+        .btn-no:hover {
+            background: var(--no-hover);
+            color: #fff;
+            border-color: var(--no-hover);
+        }
+
+        .btn-new {
+            background: #0f0f0f;
+            border: 1px solid var(--accent-dim);
+            color: var(--accent);
+            padding: .7rem 1.6rem;
+        }
+
+        /* ── Attack drill layout ── */
+        .attack-layout {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .attack-side {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            min-width: 200px;
+            max-width: 240px;
+        }
+
+        .question-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.2rem 1.4rem;
+            line-height: 1.7;
+        }
+
+        .question-card h3 {
+            font-family: 'Cinzel', serif;
+            font-size: .65rem;
+            letter-spacing: .18em;
+            color: var(--text-dim);
+            margin-bottom: .7rem;
+        }
+
+        .question-card .q-text {
+            font-size: 1.05rem;
+            color: var(--text);
+        }
+
+        .question-card .q-text strong {
+            color: var(--accent);
+            font-style: normal;
+        }
+
+        .answer-row {
+            display: flex;
+            gap: .8rem;
+        }
+
+        .feedback-box {
+            border-radius: 6px;
+            padding: .9rem 1.2rem;
+            font-size: .95rem;
+            font-weight: 300;
+            line-height: 1.5;
+            min-height: 3.5rem;
+            transition: all .3s;
+            border: 1px solid transparent;
+        }
+
+        .feedback-box.correct {
+            background: rgba(82, 183, 136, .12);
+            border-color: var(--correct);
+            color: var(--correct);
+        }
+
+        .feedback-box.incorrect {
+            background: rgba(230, 57, 70, .12);
+            border-color: var(--incorrect);
+            color: var(--incorrect);
+        }
+
+        .feedback-box.empty {
+            background: var(--panel);
+            border-color: var(--border);
+            color: var(--text-dim);
+            font-style: italic;
+        }
+
+        .score-row {
+            display: flex;
+            gap: .8rem;
+        }
+
+        .score-chip {
+            flex: 1;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: .6rem .8rem;
+            text-align: center;
+        }
+
+        .score-chip .num {
+            font-family: 'Cinzel', serif;
+            font-size: 1.5rem;
+            font-weight: 900;
+        }
+
+        .score-chip .lbl {
+            font-size: .72rem;
+            color: var(--text-dim);
+            font-style: italic;
+        }
+
+        .score-chip.correct-chip .num {
+            color: var(--correct);
+        }
+
+        .score-chip.incorrect-chip .num {
+            color: var(--incorrect);
+        }
+
+        /* ── Board visibility toggle (Drill 2) ── */
+        .board-cover-wrap {
+            position: relative;
+        }
+
+        .board-cover {
+            position: absolute;
+            inset: 0;
+            background: #0d0d0d;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: .8rem;
+            z-index: 10;
+            border-radius: 4px;
+            transition: opacity .3s;
+        }
+
+        .board-cover .cover-icon {
+            font-size: 2.8rem;
+            opacity: .35;
+        }
+
+        .board-cover .cover-text {
+            font-family: 'Cinzel', serif;
+            font-size: .7rem;
+            letter-spacing: .18em;
+            color: var(--text-dim);
+        }
+
+        .board-cover.hidden {
+            display: none;
+        }
+
+        .btn-toggle-board {
+            font-family: 'Cinzel', serif;
+            font-size: .75rem;
+            letter-spacing: .12em;
+            padding: .55rem 1.1rem;
+            border: 1px solid var(--accent-dim);
+            border-radius: 4px;
+            cursor: pointer;
+            background: #1a0e00;
+            color: var(--accent);
+            transition: background .2s, color .2s;
+            align-self: flex-start;
+        }
+
+        .btn-toggle-board:hover {
+            background: #2a1800;
+        }
+
+        /* ── Success banner ── */
+        .banner {
+            background: linear-gradient(135deg, #1a3a1a, #0f2a0f);
+            border: 1px solid var(--correct);
+            border-radius: 8px;
+            padding: 1.2rem 1.6rem;
+            text-align: center;
+            color: var(--correct);
+            font-family: 'Cinzel', serif;
+            font-size: 1rem;
+            letter-spacing: .08em;
+            display: none;
+        }
+
+        .banner.show {
+            display: block;
+        }
+
+        /* ── Move log ── */
+        .move-log {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: .8rem 1rem;
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: .82rem;
+            color: var(--text-dim);
+            font-style: italic;
+            line-height: 1.8;
+        }
+
+        .move-log h3 {
+            font-family: 'Cinzel', serif;
+            font-size: .65rem;
+            letter-spacing: .15em;
+            color: var(--text-dim);
+            margin-bottom: .5rem;
+            font-style: normal;
+        }
+
+        /* scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0d0d0d;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent-dim);
+            border-radius: 3px;
+        }
+
+        @media (max-width: 540px) {
+            .board {
+                width: 90vw;
+                height: 90vw;
+            }
+
+            nav button {
+                padding: .55rem 1.1rem;
+                font-size: .75rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>Blindfold Chess Trainer</h1>
+        <p>Sharpen your inner board — two drills, zero sight</p>
+    </header>
+
+    <nav>
+        <button id="tab1" class="active" onclick="showDrill(1)">I. Knight's Tour</button>
+        <button id="tab2" onclick="showDrill(2)">II. Attack Vision</button>
+    </nav>
+
+    <main>
+
+        <!-- ═══════════════════════════════════════════
+       DRILL 1 — KNIGHT'S TOUR
+  ═══════════════════════════════════════════ -->
+        <section id="drill1" class="drill visible">
+            <div class="board-area">
+                <div class="board-frame">
+                    <div class="board" id="ktBoard"></div>
+                </div>
+
+                <div class="side-panel">
+                    <div class="stat-box">
+                        <h3>SQUARES VISITED</h3>
+                        <div class="value" id="ktCount">1</div>
+                        <div class="label">of 64 total</div>
+                    </div>
+                    <div class="stat-box">
+                        <h3>MOVES MADE</h3>
+                        <div class="value" id="ktMoves">0</div>
+                        <div class="label">knight jumps</div>
+                    </div>
+
+                    <div class="move-log" id="ktLog">
+                        <h3>MOVE HISTORY</h3>
+                        <span id="ktLogInner">Knight placed on a8</span>
+                    </div>
+
+                    <div id="ktBanner" class="banner">
+                        ♞ Tour Complete!<br />Every square visited.
+                    </div>
+
+                    <button class="btn btn-reset" onclick="resetKt()">↺ Reset Drill</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════════
+       DRILL 2 — ATTACK VISION
+  ═══════════════════════════════════════════ -->
+        <section id="drill2" class="drill">
+            <div class="attack-layout">
+                <div class="board-cover-wrap">
+                    <div class="board-frame">
+                        <div class="board" id="atkBoard"></div>
+                    </div>
+                    <div class="board-cover" id="atkCover">
+                        <span class="cover-icon">♟</span>
+                        <span class="cover-text">BOARD HIDDEN</span>
+                    </div>
+                </div>
+
+                <div class="attack-side">
+                    <div class="question-card">
+                        <h3>THE QUESTION</h3>
+                        <div class="q-text" id="atkQuestion">Press "New Question" to begin.</div>
+                    </div>
+
+                    <div class="answer-row">
+                        <button class="btn btn-yes" onclick="answer(true)">✓ YES</button>
+                        <button class="btn btn-no" onclick="answer(false)">✗ NO</button>
+                    </div>
+
+                    <div class="feedback-box empty" id="atkFeedback">Your answer will appear here.</div>
+
+                    <div class="score-row">
+                        <div class="score-chip correct-chip">
+                            <div class="num" id="scoreCorrect">0</div>
+                            <div class="lbl">correct</div>
+                        </div>
+                        <div class="score-chip incorrect-chip">
+                            <div class="num" id="scoreIncorrect">0</div>
+                            <div class="lbl">incorrect</div>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:.6rem; flex-wrap:wrap;">
+                        <button class="btn btn-new" onclick="newQuestion()">⟳ New Question</button>
+                        <button class="btn-toggle-board" id="btnToggleBoard" onclick="toggleBoard()">👁 Show
+                            Board</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // ════════════════════════════════════════════════════════
+        // UTILITIES
+        // ════════════════════════════════════════════════════════
+        const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+
+        function sqName(col, row) {
+            // col 0-7 (a-h), row 0-7 (rank 8 at top → rank 1 at bottom visually)
+            return FILES[col] + (8 - row);
+        }
+
+        function idx(col, row) { return row * 8 + col; }
+
+        // ════════════════════════════════════════════════════════
+        // TAB SWITCHING
+        // ════════════════════════════════════════════════════════
+        function showDrill(n) {
+            document.querySelectorAll('.drill').forEach(d => d.classList.remove('visible'));
+            document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+            document.getElementById('drill' + n).classList.add('visible');
+            document.getElementById('tab' + n).classList.add('active');
+        }
+
+        // ════════════════════════════════════════════════════════
+        // DRILL 1 — KNIGHT'S TOUR
+        // ════════════════════════════════════════════════════════
+        let ktVisited = new Set();
+        let ktCurrent = null; // {col, row}
+        let ktMoveCount = 0;
+        let ktMoveHistory = [];
+
+        const KT_DELTAS = [
+            [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+            [1, -2], [1, 2], [2, -1], [2, 1]
+        ];
+
+        function knightMoves(col, row) {
+            return KT_DELTAS.map(([dc, dr]) => ({ col: col + dc, row: row + dr }))
+                .filter(p => p.col >= 0 && p.col < 8 && p.row >= 0 && p.row < 8);
+        }
+
+        function buildKtBoard() {
+            const board = document.getElementById('ktBoard');
+            board.innerHTML = '';
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const sq = document.createElement('div');
+                    sq.className = 'sq ' + ((r + c) % 2 === 0 ? 'light' : 'dark');
+                    sq.id = 'kt-' + idx(c, r);
+                    sq.dataset.col = c;
+                    sq.dataset.row = r;
+
+                    // coord labels
+                    if (c === 7) {
+                        const rankEl = document.createElement('span');
+                        rankEl.className = 'coord rank';
+                        rankEl.textContent = 8 - r;
+                        sq.appendChild(rankEl);
+                    }
+                    if (r === 7) {
+                        const fileEl = document.createElement('span');
+                        fileEl.className = 'coord file';
+                        fileEl.textContent = FILES[c];
+                        sq.appendChild(fileEl);
+                    }
+
+                    sq.addEventListener('click', ktClick);
+                    board.appendChild(sq);
+                }
+            }
+            ktVisited.clear();
+            ktCurrent = { col: 0, row: 0 }; // a8 = top-left
+            ktMoveCount = 0;
+            ktMoveHistory = ['♞ → a8'];
+            ktVisited.add(idx(0, 0));
+            renderKtBoard();
+            document.getElementById('ktCount').textContent = '1';
+            document.getElementById('ktMoves').textContent = '0';
+            document.getElementById('ktLogInner').textContent = 'Knight placed on a8';
+            document.getElementById('ktBanner').classList.remove('show');
+        }
+
+        function renderKtBoard() {
+            const validMoves = knightMoves(ktCurrent.col, ktCurrent.row)
+                .filter(p => !ktVisited.has(idx(p.col, p.row)));
+
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const sq = document.getElementById('kt-' + idx(c, r));
+                    sq.classList.remove('visited', 'clickable');
+                    // Clear knight glyph
+                    const glyph = sq.querySelector('.piece');
+                    if (glyph) glyph.remove();
+
+                    if (ktVisited.has(idx(c, r))) {
+                        sq.classList.add('visited');
+                    }
+                    if (c === ktCurrent.col && r === ktCurrent.row) {
+                        const span = document.createElement('span');
+                        span.className = 'piece';
+                        span.textContent = '♞';
+                        sq.appendChild(span);
+                    }
+                    const isValid = validMoves.some(p => p.col === c && p.row === r);
+                    if (isValid) sq.classList.add('clickable');
+                }
+            }
+        }
+
+        function ktClick(e) {
+            const sq = e.currentTarget;
+            const col = parseInt(sq.dataset.col);
+            const row = parseInt(sq.dataset.row);
+            if (!sq.classList.contains('clickable')) return;
+
+            ktCurrent = { col, row };
+            ktVisited.add(idx(col, row));
+            ktMoveCount++;
+
+            const name = sqName(col, row);
+            ktMoveHistory.push(name);
+
+            document.getElementById('ktCount').textContent = ktVisited.size;
+            document.getElementById('ktMoves').textContent = ktMoveCount;
+            document.getElementById('ktLogInner').textContent = ktMoveHistory.join(' → ');
+
+            renderKtBoard();
+
+            if (ktVisited.size === 64) {
+                document.getElementById('ktBanner').classList.add('show');
+            }
+        }
+
+        function resetKt() {
+            buildKtBoard();
+        }
+
+        // ════════════════════════════════════════════════════════
+        // DRILL 2 — ATTACK VISION
+        // ════════════════════════════════════════════════════════
+        const PIECES = ['♟ Pawn', '♜ Rook', '♝ Bishop', '♛ Queen', '♞ Knight', '♚ King'];
+        const PIECE_NAMES = ['Pawn', 'Rook', 'Bishop', 'Queen', 'Knight', 'King'];
+
+        let atkPiece = null;      // e.g. 'Queen'
+        let atkFrom = null;      // {col, row}
+        let atkTarget = null;     // {col, row}
+        let atkAnswer = null;     // true if piece attacks target
+        let atkAnswered = false;
+        let scoreCorrect = 0;
+        let scoreIncorrect = 0;
+        let boardVisible = false; // board is hidden by default
+
+        function toggleBoard() {
+            boardVisible = !boardVisible;
+            const cover = document.getElementById('atkCover');
+            const btn = document.getElementById('btnToggleBoard');
+            if (boardVisible) {
+                cover.classList.add('hidden');
+                btn.textContent = '🙈 Hide Board';
+                // If already answered, make sure reveal overlay is shown
+                if (atkAnswered) renderAtkBoard(true);
+                else renderAtkBoard(false);
+            } else {
+                cover.classList.remove('hidden');
+                btn.textContent = '👁 Show Board';
+            }
+        }
+
+        function buildAtkBoard() {
+            const board = document.getElementById('atkBoard');
+            board.innerHTML = '';
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const sq = document.createElement('div');
+                    sq.className = 'sq ' + ((r + c) % 2 === 0 ? 'light' : 'dark');
+                    sq.id = 'atk-' + idx(c, r);
+
+                    if (c === 7) {
+                        const rankEl = document.createElement('span');
+                        rankEl.className = 'coord rank';
+                        rankEl.textContent = 8 - r;
+                        sq.appendChild(rankEl);
+                    }
+                    if (r === 7) {
+                        const fileEl = document.createElement('span');
+                        fileEl.className = 'coord file';
+                        fileEl.textContent = FILES[c];
+                        sq.appendChild(fileEl);
+                    }
+                    board.appendChild(sq);
+                }
+            }
+        }
+
+        function randInt(n) { return Math.floor(Math.random() * n); }
+
+        function getAttackedSquares(piece, col, row) {
+            const squares = [];
+            const dirs = {
+                Rook: [[1, 0], [-1, 0], [0, 1], [0, -1]],
+                Bishop: [[1, 1], [1, -1], [-1, 1], [-1, -1]],
+                Queen: [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]],
+                King: [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]],
+                Knight: [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]],
+                Pawn: [[1, -1], [-1, -1]] // white pawn attacks diagonally upward (row decreases)
+            };
+
+            if (piece === 'Knight' || piece === 'King' || piece === 'Pawn') {
+                for (const [dc, dr] of dirs[piece]) {
+                    const nc = col + dc, nr = row + dr;
+                    if (nc >= 0 && nc < 8 && nr >= 0 && nr < 8) squares.push({ col: nc, row: nr });
+                }
+            } else {
+                // sliding pieces
+                for (const [dc, dr] of dirs[piece]) {
+                    let nc = col + dc, nr = row + dr;
+                    while (nc >= 0 && nc < 8 && nr >= 0 && nr < 8) {
+                        squares.push({ col: nc, row: nr });
+                        nc += dc; nr += dr;
+                    }
+                }
+            }
+            return squares;
+        }
+
+        function isAttacked(piece, fromCol, fromRow, targetCol, targetRow) {
+            return getAttackedSquares(piece, fromCol, fromRow)
+                .some(s => s.col === targetCol && s.row === targetRow);
+        }
+
+        function newQuestion() {
+            atkAnswered = false;
+
+            // Pick random piece
+            const pi = randInt(PIECE_NAMES.length);
+            atkPiece = PIECE_NAMES[pi];
+
+            // Pick random from-square
+            atkFrom = { col: randInt(8), row: randInt(8) };
+
+            // Decide: 50% chance the target IS attacked, 50% not
+            const shouldAttack = Math.random() < 0.5;
+
+            const attacked = getAttackedSquares(atkPiece, atkFrom.col, atkFrom.row);
+
+            if (shouldAttack && attacked.length > 0) {
+                // Pick a random attacked square as target
+                const choice = attacked[randInt(attacked.length)];
+                atkTarget = choice;
+                atkAnswer = true;
+            } else {
+                // Pick a non-attacked square (not the from square)
+                const all = [];
+                for (let r = 0; r < 8; r++)
+                    for (let c = 0; c < 8; c++)
+                        if (!(c === atkFrom.col && r === atkFrom.row) &&
+                            !attacked.some(s => s.col === c && s.row === r))
+                            all.push({ col: c, row: r });
+
+                if (all.length === 0) {
+                    // Fallback: just pick an attacked square
+                    atkTarget = attacked[randInt(attacked.length)] || { col: 0, row: 0 };
+                    atkAnswer = true;
+                } else {
+                    atkTarget = all[randInt(all.length)];
+                    atkAnswer = false;
+                }
+            }
+
+            // Update UI
+            const fromName = sqName(atkFrom.col, atkFrom.row);
+            const targetName = sqName(atkTarget.col, atkTarget.row);
+            const pieceIcon = PIECES[pi].split(' ')[0];
+            const pieceName = PIECES[pi].split(' ')[1];
+
+            document.getElementById('atkQuestion').innerHTML =
+                `A <strong>${pieceIcon} ${pieceName}</strong> is on <strong>${fromName}</strong>.<br>
+     Does it attack <strong>${targetName}</strong>?`;
+
+            // Feedback reset
+            const fb = document.getElementById('atkFeedback');
+            fb.className = 'feedback-box empty';
+            fb.textContent = 'Your answer will appear here.';
+
+            // Render board (only draw pieces/state; cover handles visibility)
+            renderAtkBoard(false);
+        }
+
+        function renderAtkBoard(reveal) {
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const sq = document.getElementById('atk-' + idx(c, r));
+                    sq.classList.remove('attacked-sq', 'safe-sq');
+                    const piece = sq.querySelector('.piece');
+                    if (piece) piece.remove();
+
+                    if (c === atkFrom?.col && r === atkFrom?.row) {
+                        const span = document.createElement('span');
+                        span.className = 'piece';
+                        span.textContent = atkPiece ? PIECES[PIECE_NAMES.indexOf(atkPiece)].split(' ')[0] : '';
+                        sq.appendChild(span);
+                    }
+                    if (c === atkTarget?.col && r === atkTarget?.row) {
+                        const span = document.createElement('span');
+                        span.className = 'piece';
+                        span.textContent = '◎';
+                        span.style.fontSize = 'clamp(1rem,3vw,1.4rem)';
+                        span.style.color = '#fff';
+                        span.style.opacity = '.6';
+                        sq.appendChild(span);
+                    }
+
+                    if (reveal) {
+                        // highlight all attacked squares
+                        const attacked = getAttackedSquares(atkPiece, atkFrom.col, atkFrom.row);
+                        if (attacked.some(s => s.col === c && s.row === r)) {
+                            sq.classList.add('attacked-sq');
+                        }
+                    }
+                }
+            }
+        }
+
+        function answer(userSays) {
+            if (!atkPiece || atkAnswered) return;
+            atkAnswered = true;
+
+            const correct = (userSays === atkAnswer);
+            const fb = document.getElementById('atkFeedback');
+
+            if (correct) {
+                scoreCorrect++;
+                fb.className = 'feedback-box correct';
+                fb.textContent = '✓ Correct! ' + (atkAnswer
+                    ? `The ${atkPiece} on ${sqName(atkFrom.col, atkFrom.row)} does attack ${sqName(atkTarget.col, atkTarget.row)}.`
+                    : `The ${atkPiece} on ${sqName(atkFrom.col, atkFrom.row)} does NOT attack ${sqName(atkTarget.col, atkTarget.row)}.`);
+            } else {
+                scoreIncorrect++;
+                fb.className = 'feedback-box incorrect';
+                fb.textContent = '✗ Wrong. ' + (atkAnswer
+                    ? `The ${atkPiece} on ${sqName(atkFrom.col, atkFrom.row)} DOES attack ${sqName(atkTarget.col, atkTarget.row)}.`
+                    : `The ${atkPiece} on ${sqName(atkFrom.col, atkFrom.row)} does NOT attack ${sqName(atkTarget.col, atkTarget.row)}.`);
+            }
+
+            document.getElementById('scoreCorrect').textContent = scoreCorrect;
+            document.getElementById('scoreIncorrect').textContent = scoreIncorrect;
+
+            // Reveal attacked squares — but only if the board is currently visible
+            if (boardVisible) renderAtkBoard(true);
+        }
+
+        // ════════════════════════════════════════════════════════
+        // INIT
+        // ════════════════════════════════════════════════════════
+        buildKtBoard();
+        buildAtkBoard();
+    </script>
+</body>
+
+</html>
