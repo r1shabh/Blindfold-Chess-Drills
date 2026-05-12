@@ -13,6 +13,11 @@ import {
   submitAnswer,
   toggleBoard,
 } from './attackVision.js';
+import {
+  init                as initSquareColor,
+  newColorQuestion,
+  submitColorAnswer,
+} from './squareColor.js';
 
 // ── Tab switching ───────────────────────────────
 function showDrill(n) {
@@ -24,12 +29,15 @@ function showDrill(n) {
 
 // ── Expose to HTML onclick attributes ──────────
 // (ES modules don't pollute window automatically)
-window.showDrill    = showDrill;
-window.resetKt      = initKnightTour;        // reset = full re-init
-window.newQuestion  = newQuestion;
-window.answer       = submitAnswer;
-window.toggleBoard  = toggleBoard;
+window.showDrill         = showDrill;
+window.resetKt           = initKnightTour;
+window.newQuestion       = newQuestion;
+window.answer            = submitAnswer;
+window.toggleBoard       = toggleBoard;
+window.newColorQuestion  = newColorQuestion;
+window.colorAnswer       = submitColorAnswer;
 
 // ── Bootstrap ───────────────────────────────────
 initKnightTour();
 initAttackVision();
+initSquareColor();

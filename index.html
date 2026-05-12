@@ -14,12 +14,13 @@
 
 <header>
   <h1>Blindfold Chess Trainer</h1>
-  <p>Sharpen your inner board — two drills, zero sight</p>
+  <p>Sharpen your inner board — three drills, zero sight</p>
 </header>
 
 <nav>
   <button id="tab1" class="active" onclick="showDrill(1)">I. Knight's Tour</button>
   <button id="tab2"               onclick="showDrill(2)">II. Attack Vision</button>
+  <button id="tab3"               onclick="showDrill(3)">III. Square Color</button>
 </nav>
 
 <main>
@@ -103,6 +104,40 @@
           <button class="btn-toggle-board" id="btnToggleBoard" onclick="toggleBoard()">👁 Show Board</button>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       DRILL 3 — SQUARE COLOR
+  ═══════════════════════════════════════════ -->
+  <section id="drill3" class="drill">
+    <div class="color-drill-wrap">
+
+      <div class="question-card">
+        <h3>THE QUESTION</h3>
+        <div class="q-text" id="scQuestion">Press "New Question" to begin.</div>
+      </div>
+
+      <div class="color-answer-row">
+        <button class="btn btn-light-sq" onclick="colorAnswer('light')">☀ Light</button>
+        <button class="btn btn-dark-sq"  onclick="colorAnswer('dark')">● Dark</button>
+      </div>
+
+      <div class="feedback-box empty" id="scFeedback">Your answer will appear here.</div>
+
+      <div class="score-row">
+        <div class="score-chip correct-chip">
+          <div class="num" id="scScoreCorrect">0</div>
+          <div class="lbl">correct</div>
+        </div>
+        <div class="score-chip incorrect-chip">
+          <div class="num" id="scScoreIncorrect">0</div>
+          <div class="lbl">incorrect</div>
+        </div>
+      </div>
+
+      <button class="btn btn-new" onclick="newColorQuestion()">⟳ New Question</button>
+
     </div>
   </section>
 
